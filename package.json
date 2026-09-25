@@ -1,0 +1,35 @@
+{
+  "name": "lensamas",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "engines": {
+    "node": "22.x"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "npm run check:api-budget && tsc && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "check:api-budget": "node scripts/check-api-functions.mjs",
+    "refresh:snapshots": "node scripts/refresh-snapshots.mjs"
+  },
+  "dependencies": {
+    "hls.js": "^1.7.3",
+    "leaflet": "^1.9.4",
+    "lucide-react": "^1.47.0",
+    "mpegts.js": "^1.8.2",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-leaflet": "^4.2.1"
+  },
+  "devDependencies": {
+    "@types/leaflet": "^1.9.22",
+    "@types/node": "^22.20.3",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.1",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.1"
+  }
+}

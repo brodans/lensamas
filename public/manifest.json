@@ -1,0 +1,27 @@
+{
+  "name": "LENSAMAS — Lensa Monitoring Area Strategis",
+  "short_name": "LENSAMAS",
+  "description": "Lensa Monitoring Area Strategis untuk CCTV dan WiFi Publik",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#080c14",
+  "theme_color": "#0284c7",
+  "categories": ["utilities", "government", "navigation"],
+  "icons": [
+    {
+      "src": "/assets/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/assets/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

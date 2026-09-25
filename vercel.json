@@ -1,0 +1,30 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "regions": ["sin1"],
+  "functions": {
+    "api/hls-proxy.ts": {
+      "maxDuration": 60
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/api/madiun",
+      "destination": "/api/villabs"
+    },
+    {
+      "source": "/api/malang-stream/:streamId/:asset*",
+      "destination": "/api/hls-proxy?source=malang&streamId=:streamId&asset=:asset"
+    },
+    { "source": "/((?!api/).*)", "destination": "/index.html" }
+  ],
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        { "key": "Access-Control-Allow-Methods", "value": "GET, POST, OPTIONS" },
+        { "key": "Access-Control-Allow-Headers", "value": "Content-Type, Range" },
+        { "key": "Access-Control-Expose-Headers", "value": "Content-Length, Content-Range, Accept-Ranges, X-Request-Id, X-Lensamas-Source, X-Lensamas-Fallback, X-Lensamas-Stale" }
+      ]
+    }
+  ]
+}
