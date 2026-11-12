@@ -1,7 +1,6 @@
-import type { ApiResponse, Camera, StreamResponseData, WifiPoint } from './types';
+import type { ApiResponse, Camera } from './types';
 
 const STORAGE_CAMERAS = 'lensamas_offline_cameras';
-const STORAGE_WIFI = 'lensamas_offline_wifi';
 const STORAGE_SYNCED_AT = 'lensamas_offline_synced_at';
 
 function migrateCachedCamera(camera: Camera): Camera {
@@ -46,21 +45,6 @@ export function getCachedCameras(): Camera[] {
 }
 
 /**
- * Mengambil data WiFi tersimpan dari localStorage.
- */
-export function getCachedWifi(): WifiPoint[] {
-  if (typeof window === 'undefined') return [];
-  try {
-    const raw = localStorage.getItem(STORAGE_WIFI);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
-
-/**
  * Mengambil timestamp waktu sinkronisasi terakhir.
  */
 export function getLastSyncTime(): string | null {
@@ -75,14 +59,11 @@ export function getLastSyncTime(): string | null {
 /**
  * Menyimpan data ke localStorage untuk ketahanan offline.
  */
-export function saveOfflineData(cameras: Camera[], wifi: WifiPoint[]): void {
+export function saveOfflineData(cameras: Camera[]): void {
   if (typeof window === 'undefined') return;
   try {
     if (Array.isArray(cameras) && cameras.length > 0) {
       localStorage.setItem(STORAGE_CAMERAS, JSON.stringify(cameras));
-    }
-    if (Array.isArray(wifi) && wifi.length > 0) {
-      localStorage.setItem(STORAGE_WIFI, JSON.stringify(wifi));
     }
     localStorage.setItem(STORAGE_SYNCED_AT, new Date().toISOString());
   } catch {
@@ -101,7 +82,7 @@ export function formatApiErrorMessage(err: unknown): string {
   const raw = (err as Error)?.message || String(err || '');
 
   if (raw.includes('502') || raw.includes('Bad Gateway')) {
-    return 'Server pusat (Nawasara) sedang tidak dapat dijangkau sementara waktu.';
+    return 'Server sumber sedang tidak dapat dijangkau sementara waktu.';
   }
   if (raw.includes('503') || raw.includes('504') || raw.includes('Timeout') || raw.includes('timeout')) {
     return 'Server pusat sedang sibuk atau batas waktu koneksi habis.';
@@ -114,98 +95,14 @@ export function formatApiErrorMessage(err: unknown): string {
 }
 
 /**
- * Mengambil daftar seluruh CCTV publik Ponorogo.
- */
-export async function fetchCameras(signal?: AbortSignal): Promise<Camera[]> {
-  let res: Response;
-  try {
-    res = await fetch('/api/cameras', { signal });
-  } catch (netErr) {
-    throw new Error(formatApiErrorMessage(netErr));
-  }
-
-  if (!res.ok) {
-    if (res.status === 502) {
-      throw new Error('Server pusat (Nawasara) sedang tidak dapat dijangkau sementara (HTTP 502).');
-    }
-    if (res.status === 503 || res.status === 504) {
-      throw new Error('Server pusat sedang sibuk atau batas waktu habis.');
-    }
-    throw new Error(`Tidak dapat memuat daftar CCTV (HTTP ${res.status}).`);
-  }
-
-  const json = (await res.json()) as ApiResponse<Camera[]>;
-  if (!Array.isArray(json.data)) {
-    throw new Error('Format data kamera tidak dikenali dari server.');
-  }
-  return json.data;
-}
-
-/**
- * Mengambil titik hotspot WiFi publik Ponorogo.
- */
-export async function fetchWifiPoints(signal?: AbortSignal): Promise<WifiPoint[]> {
-  try {
-    const res = await fetch('/api/wifi', { signal });
-    if (!res.ok) return getCachedWifi();
-    const json = (await res.json()) as ApiResponse<WifiPoint[]>;
-    return Array.isArray(json.data) ? json.data : getCachedWifi();
-  } catch {
-    return getCachedWifi();
-  }
-}
-
-export interface StreamUrlResult {
-  wss: string;
-  mode: string;
-  expiresAt: Date | null;
-}
-
-/**
- * Meminta signed stream URL (masa berlaku ~5 menit) lalu mengubah https:// -> wss://
- * karena server go2rtc melayani stream live via WebSocket.
- */
-export async function fetchStreamUrl(slug: string, signal?: AbortSignal): Promise<StreamUrlResult> {
-  let res: Response;
-  try {
-    res = await fetch(`/api/stream/${encodeURIComponent(slug)}`, { signal });
-  } catch (netErr) {
-    throw new Error(formatApiErrorMessage(netErr));
-  }
-
-  if (!res.ok) {
-    if (res.status === 502) {
-      throw new Error('Server live stream go2rtc sedang tidak dapat dijangkau (HTTP 502). Coba sesaat lagi.');
-    }
-    if (res.status === 503 || res.status === 504) {
-      throw new Error('Server live stream sedang sibuk. Silakan coba kembali.');
-    }
-    throw new Error(`Gagal membuka live stream kamera (HTTP ${res.status}).`);
-  }
-
-  const json = (await res.json()) as ApiResponse<StreamResponseData>;
-  const data = json.data;
-  if (!data?.stream_url) {
-    throw new Error('Stream URL tidak ditemukan dalam respons API');
-  }
-
-  const wss = data.stream_url.replace(/^http/, 'ws');
-  return {
-    wss,
-    mode: data.mode || 'mse',
-    expiresAt: data.expires_at ? new Date(data.expires_at) : null,
-  };
-}
-
-/**
  * Mengambil daftar CCTV Kota Madiun melalui proxy internal `/api/madiun`.
  * Server memprioritaskan sumber utama resmi pada IP Kota Madiun dan
  * otomatis memakai Villabs sebagai fallback. Fungsi ini selalu mengembalikan
  * array (fallback ke data tersimpan) sehingga kegagalan sumber tidak
- * menggagalkan pemuatan kamera Ponorogo.
+ * menggagalkan pemuatan kamera lain.
  */
 export async function fetchMadiunCameras(signal?: AbortSignal): Promise<Camera[]> {
-  const cached = getCachedCameras().filter((c) => (c.source || 'ponorogo') === 'madiun');
+  const cached = getCachedCameras().filter((c) => c.source === 'madiun');
   try {
     const res = await fetch('/api/madiun', { signal });
     if (!res.ok) return cached;
@@ -226,7 +123,7 @@ export async function fetchMadiunCameras(signal?: AbortSignal): Promise<Camera[]
  * kegagalan sumber Magetan tidak menggagalkan pemuatan kamera lain.
  */
 export async function fetchMagetanCameras(signal?: AbortSignal): Promise<Camera[]> {
-  const cached = getCachedCameras().filter((c) => (c.source || 'ponorogo') === 'magetan');
+  const cached = getCachedCameras().filter((c) => c.source === 'magetan');
   try {
     const res = await fetch('/api/sarangan', { signal });
     if (!res.ok) return cached;
@@ -247,7 +144,7 @@ export async function fetchMagetanCameras(signal?: AbortSignal): Promise<Camera[
  * kegagalan sumber Trenggalek tidak menggagalkan pemuatan kamera lain.
  */
 export async function fetchTrenggalekCameras(signal?: AbortSignal): Promise<Camera[]> {
-  const cached = getCachedCameras().filter((c) => (c.source || 'ponorogo') === 'trenggalek');
+  const cached = getCachedCameras().filter((c) => c.source === 'trenggalek');
   try {
     const res = await fetch('/api/trenggalek', { signal });
     if (!res.ok) return cached;
@@ -381,6 +278,24 @@ export async function fetchSitubondoCameras(signal?: AbortSignal): Promise<Camer
 
 export async function fetchPasuruanCameras(signal?: AbortSignal): Promise<Camera[]> {
   return fetchRegionalCameras('pasuruan', signal);
+}
+
+/**
+ * Mengambil daftar CCTV seluruh Indonesia dari data statis hasil agregasi
+ * cctvnusantara.com (disimpan di /public/nusantara-cameras.json). Tidak
+ * memerlukan proxy serverless tambahan; data dimuat langsung dari aset statis.
+ */
+export async function fetchNusantaraCameras(signal?: AbortSignal): Promise<Camera[]> {
+  const cached = getCachedCameras().filter((camera) => camera.source === 'nusantara');
+  try {
+    const res = await fetch('/nusantara-cameras.json', { signal });
+    if (!res.ok) return cached;
+    const json = await res.json();
+    const list = Array.isArray(json) ? (json as Camera[]) : [];
+    return list.length > 0 ? list : cached;
+  } catch {
+    return cached;
+  }
 }
 
 export async function startSurabayaStream(cameraId: string, streamUrl?: string): Promise<void> {

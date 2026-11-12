@@ -63,7 +63,6 @@ self.addEventListener('fetch', (event) => {
     /\.(m3u8|m4s|ts|flv)$/i.test(url.pathname) ||
     req.headers.get('range') ||
     req.destination === 'media' ||
-    url.hostname.includes('ponorogo.go.id') ||
     url.hostname.includes('google.com')
   ) {
     return;

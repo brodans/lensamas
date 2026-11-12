@@ -68,7 +68,7 @@ const ZoomControls: React.FC<ZoomControlsProps> = ({
         type="button"
         className="zoom-btn zoom-reset-btn"
         onClick={handleResetView}
-        title="Pusatkan Kembali Peta Ponorogo"
+        title="Pusatkan kembali peta"
         aria-label="Pusatkan peta"
       >
         <Compass size={15} strokeWidth={2.2} />

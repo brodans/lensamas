@@ -10,19 +10,18 @@ import {
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import ZoomControls from './ZoomControls';
-import type { Camera, WifiPoint } from './types';
+import type { Camera } from './types';
 
 // Pembuatan DivIcon kustom untuk CCTV dengan icon CCTV resmi Lucide React
 function createCameraMarkerIcon(
   status: string,
   isSelected: boolean,
-  source: Camera['source'] = 'ponorogo'
+  source?: Camera['source']
 ): L.DivIcon {
   const isOnline = status === 'online';
   const isUnknown = status === 'unknown';
-  const sourceKey = source ?? 'ponorogo';
+  const sourceKey = source ?? 'madiun';
   const sourceColors: Record<string, string> = {
-    ponorogo: '#10b981',
     madiun: '#38bdf8',
     magetan: '#f59e0b',
     trenggalek: '#a855f7',
@@ -40,7 +39,6 @@ function createCameraMarkerIcon(
     pasuruan: '#c026d3',
   };
   const sourceLabels: Record<string, string> = {
-    ponorogo: 'Ponorogo',
     madiun: 'Madiun',
     magetan: 'Magetan',
     trenggalek: 'Trenggalek',
@@ -74,11 +72,11 @@ function createCameraMarkerIcon(
     situbondo: 'S',
     pasuruan: 'P',
   };
-  const color = isOnline || isUnknown ? (sourceColors[sourceKey] || sourceColors.ponorogo) : '#6b7280';
+  const color = isOnline || isUnknown ? (sourceColors[sourceKey] || '#10b981') : '#6b7280';
   const pulseClass = isOnline ? 'marker-pulse-online' : '';
   const selectedClass = isSelected ? 'marker-selected' : '';
   const sourceClass = `marker-source-${sourceKey}`;
-  const sourceName = sourceLabels[sourceKey] || sourceLabels.ponorogo;
+  const sourceName = sourceLabels[sourceKey] || 'CCTV';
   const sourceBadge = sourceBadges[sourceKey] || '';
 
   return L.divIcon({
@@ -95,7 +93,7 @@ function createCameraMarkerIcon(
             <path d="M7 9h.01"/>
           </svg>
         </div>
-        ${sourceBadge ? `<div class="pin-source-badge ${source}">${sourceBadge}</div>` : ''}
+        ${sourceBadge ? `<div class="pin-source-badge ${sourceKey}">${sourceBadge}</div>` : ''}
         <div class="pin-pointer"></div>
       </div>
     `,
@@ -105,52 +103,18 @@ function createCameraMarkerIcon(
   });
 }
 
-// Pembuatan DivIcon kustom untuk WiFi Hotspot dengan icon Wifi resmi Lucide React
-function createWifiMarkerIcon(isSelected = false): L.DivIcon {
-  const selectedClass = isSelected ? 'marker-selected' : '';
-  return L.divIcon({
-    className: 'custom-leaflet-marker',
-    html: `
-      <div class="wifi-marker-pin ${selectedClass}" title="Klik untuk membuka info WiFi">
-        <div class="wifi-pin-inner">
-          <!-- Icon Wifi Lucide React Resmi -->
-          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 20h.01"/>
-            <path d="M2 8.82a15 15 0 0 1 20 0"/>
-            <path d="M5 12.859a10 10 0 0 1 14 0"/>
-            <path d="M8.5 16.429a5 5 0 0 1 7 0"/>
-          </svg>
-        </div>
-      </div>
-    `,
-    iconSize: [28, 28],
-    iconAnchor: [14, 14],
-    popupAnchor: [0, -16],
-  });
-}
-
 // Cache icon marker agar tidak membuat DOM instance baru berulang-ulang pada setiap render
 const cameraIconCache = new Map<string, L.DivIcon>();
 function getCameraMarkerIcon(
   status: string,
   isSelected: boolean,
-  source: Camera['source'] = 'ponorogo'
+  source?: Camera['source']
 ): L.DivIcon {
-  const key = `${status}-${isSelected}-${source ?? 'ponorogo'}`;
+  const key = `${status}-${isSelected}-${source ?? 'default'}`;
   let icon = cameraIconCache.get(key);
   if (!icon) {
     icon = createCameraMarkerIcon(status, isSelected, source);
     cameraIconCache.set(key, icon);
-  }
-  return icon;
-}
-
-const wifiIconCache = new Map<boolean, L.DivIcon>();
-function getWifiMarkerIcon(isSelected = false): L.DivIcon {
-  let icon = wifiIconCache.get(isSelected);
-  if (!icon) {
-    icon = createWifiMarkerIcon(isSelected);
-    wifiIconCache.set(isSelected, icon);
   }
   return icon;
 }
@@ -366,7 +330,7 @@ function MapController({ items, selectedCamera, focusedLocation, mapFocus }: Map
     }
   }, [focusedLocation, map]);
 
-  // Terbang ke area sumber CCTV (Ponorogo / Madiun) ketika filter sumber berubah
+  // Terbang ke area sumber CCTV ketika filter sumber berubah
   useEffect(() => {
     if (!mapFocus) return;
     map.flyTo([mapFocus.latitude, mapFocus.longitude], mapFocus.zoom, {
@@ -512,135 +476,24 @@ const CameraMarkerItem = React.memo<CameraMarkerItemProps>(({ camera, isSelected
 }, sameCameraMarkerProps);
 CameraMarkerItem.displayName = 'CameraMarkerItem';
 
-interface WifiMarkerItemProps {
-  wifi: WifiPoint;
-  isSelected: boolean;
-  focusKey?: number;
-  onSelect?: (id: number) => void;
-}
-
-function sameWifiMarkerProps(
-  previous: WifiMarkerItemProps,
-  next: WifiMarkerItemProps
-): boolean {
-  return previous.isSelected === next.isSelected &&
-    previous.focusKey === next.focusKey &&
-    previous.onSelect === next.onSelect &&
-    previous.wifi.id === next.wifi.id &&
-    previous.wifi.name === next.wifi.name &&
-    previous.wifi.location === next.wifi.location &&
-    previous.wifi.latitude === next.wifi.latitude &&
-    previous.wifi.longitude === next.wifi.longitude &&
-    previous.wifi.status === next.wifi.status;
-}
-
-// Marker item WiFi yang otomatis membuka popup ketika dipilih dari sidebar atau peta
-const WifiMarkerItem = React.memo<WifiMarkerItemProps>(({
-  wifi,
-  isSelected,
-  focusKey = 0,
-  onSelect,
-}) => {
-  const markerRef = useRef<L.Marker | null>(null);
-  const icon = useMemo(() => getWifiMarkerIcon(isSelected), [isSelected]);
-
-  useEffect(() => {
-    if (isSelected && markerRef.current) {
-      markerRef.current.openPopup();
-      const timer = window.setTimeout(() => {
-        if (markerRef.current) {
-          markerRef.current.openPopup();
-        }
-      }, 350);
-      return () => window.clearTimeout(timer);
-    }
-  }, [isSelected, focusKey]);
-
-  return (
-    <Marker
-      ref={markerRef}
-      position={[wifi.latitude, wifi.longitude]}
-      icon={icon}
-      eventHandlers={{
-        click: () => {
-          onSelect?.(wifi.id);
-        },
-      }}
-    >
-      <Tooltip direction="top" offset={[0, -16]} opacity={0.96} className="lensamas-tooltip">
-        <div className="tooltip-inner">
-          <b>{wifi.name}</b>
-          <div className="tooltip-muted">{wifi.location}</div>
-        </div>
-      </Tooltip>
-
-      <Popup className="lensamas-popup" autoPan={false}>
-        <div className="popup-card">
-          <div className="popup-badge-row">
-            <span className="popup-wifi-tag">
-              <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <path d="M12 20h.01"/>
-                <path d="M2 8.82a15 15 0 0 1 20 0"/>
-                <path d="M5 12.859a10 10 0 0 1 14 0"/>
-                <path d="M8.5 16.429a5 5 0 0 1 7 0"/>
-              </svg>
-              <span>WiFi Publik</span>
-            </span>
-            <span className="popup-status online">● Terhubung</span>
-          </div>
-
-          <div className="popup-title">{wifi.name}</div>
-          <div className="popup-loc">{wifi.location}</div>
-
-          <a
-            href={`https://www.google.com/maps/search/?api=1&query=${wifi.latitude},${wifi.longitude}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="popup-gmaps-btn"
-          >
-            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2">
-              <polygon points="3 11 22 2 13 21 11 13 3 11"/>
-            </svg>
-            <span>Buka di Google Maps</span>
-            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
-              <polyline points="15 3 21 3 21 9"/>
-              <line x1="10" y1="14" x2="21" y2="3"/>
-            </svg>
-          </a>
-        </div>
-      </Popup>
-    </Marker>
-  );
-}, sameWifiMarkerProps);
-WifiMarkerItem.displayName = 'WifiMarkerItem';
-
 interface MapViewProps {
   cameras: Camera[];
-  wifiPoints: WifiPoint[];
   selectedSlug?: string | null;
   selectedCamera?: Camera | null;
-  selectedWifiId?: number | null;
-  wifiFocusKey?: number;
   focusedLocation?: { latitude: number; longitude: number } | null;
   mapFocus?: MapFocus | null;
   theme?: 'dark' | 'light';
   onSelect: (camera: Camera) => void;
-  onSelectWifi?: (id: number) => void;
 }
 
 const MapView: React.FC<MapViewProps> = ({
   cameras,
-  wifiPoints,
   selectedSlug,
   selectedCamera,
-  selectedWifiId,
-  wifiFocusKey,
   focusedLocation,
   mapFocus,
   theme = 'dark',
   onSelect,
-  onSelectWifi,
 }) => {
   const [mapZoom, setMapZoom] = useState(14);
   const [mapBounds, setMapBounds] = useState<L.LatLngBounds>(() => L.latLngBounds([-90, -180], [90, 180]));
@@ -655,8 +508,8 @@ const MapView: React.FC<MapViewProps> = ({
     [cameras, mapZoom, selectedSlug, mapBounds]
   );
   const allCoordinates = useMemo(
-    () => [...cameras, ...wifiPoints].map((item) => ({ latitude: item.latitude, longitude: item.longitude })),
-    [cameras, wifiPoints]
+    () => cameras.map((item) => ({ latitude: item.latitude, longitude: item.longitude })),
+    [cameras]
   );
 
   // Gunakan OpenStreetMap tanpa API key; tile gelap diberi filter pada pane peta.
@@ -721,16 +574,7 @@ const MapView: React.FC<MapViewProps> = ({
         />
       ))}
 
-      {/* Markers WiFi dengan Popup Otomatis Terbuka Saat Dipilih */}
-      {wifiPoints.map((wifi) => (
-        <WifiMarkerItem
-          key={`wifi-${wifi.id}`}
-          wifi={wifi}
-          isSelected={wifi.id === selectedWifiId}
-          focusKey={wifiFocusKey}
-          onSelect={onSelectWifi}
-        />
-      ))}
+
     </MapContainer>
   );
 };

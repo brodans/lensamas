@@ -368,10 +368,6 @@ select {
   color: #f43f5e;
 }
 
-.count-wifi {
-  background: rgba(168, 85, 247, 0.15);
-  color: #a855f7;
-}
 
 /* ── Network Alert & Offline Resilience Card (Professional Banner) ── */
 .network-alert-card {
@@ -552,9 +548,6 @@ select {
   flex-direction: column;
 }
 
-.wifi-section-block {
-  margin-top: 18px;
-}
 
 /* ── Sticky Section Header (Opaque & Bebas Tabrakan Teks) ── */
 .section-sticky-header {
@@ -653,11 +646,6 @@ select {
   border: 1px solid rgba(244, 63, 94, 0.3);
 }
 
-.pill-wifi {
-  background: rgba(168, 85, 247, 0.15);
-  color: #a855f7;
-  border: 1px solid rgba(168, 85, 247, 0.3);
-}
 
 .text-sky { color: #0284c7; }
 [data-theme="dark"] .text-sky { color: #38bdf8; }
@@ -667,7 +655,7 @@ select {
 .text-muted { color: var(--text-muted); }
 
 /* Camera List */
-.cam-list, .wifi-list {
+.cam-list {
   list-style: none;
   padding: 8px 0 0 0;
   margin: 0;
@@ -794,52 +782,14 @@ select {
   transform: translateX(2px);
 }
 
-.wifi-card-btn:hover .cam-chevron {
+.cam-chevron:hover {
   color: #a855f7;
   transform: translateX(2px);
 }
 
-/* WiFi Card Button */
-.wifi-card-btn {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  width: 100%;
-  background: var(--bg-card);
-  border: 1px solid var(--border-card);
-  border-radius: 12px;
-  padding: 10px 12px;
-  color: inherit;
-  font-family: inherit;
-  cursor: pointer;
-  text-align: left;
-  transition: all 0.15s ease;
-}
 
-.wifi-card-btn:hover {
-  background: var(--bg-card-hover);
-  border-color: #a855f7;
-  transform: translateY(-1px);
-}
 
-.wifi-card-btn.active {
-  background: var(--bg-card-active);
-  border-color: #a855f7;
-  box-shadow: 0 4px 14px rgba(168, 85, 247, 0.25);
-}
 
-.wifi-icon-wrap {
-  width: 32px;
-  height: 32px;
-  border-radius: 9px;
-  background: rgba(168, 85, 247, 0.14);
-  color: #a855f7;
-  border: 1px solid rgba(168, 85, 247, 0.3);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
 
 .empty-state-box {
   display: flex;
@@ -1073,38 +1023,9 @@ select {
   100% { transform: scale(2.2); opacity: 0; }
 }
 
-/* WiFi Marker Pin */
-.wifi-marker-pin {
-  width: 30px;
-  height: 30px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
 
-.wifi-pin-inner {
-  width: 28px;
-  height: 28px;
-  background: #8b5cf6;
-  color: #ffffff;
-  border: 2px solid #ffffff;
-  border-radius: 50%;
-  box-shadow: 0 3px 8px rgba(139, 92, 246, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: transform 0.15s ease;
-}
 
-.wifi-marker-pin:hover .wifi-pin-inner {
-  transform: scale(1.2);
-}
 
-.wifi-marker-pin.marker-selected .wifi-pin-inner {
-  transform: scale(1.25);
-  box-shadow: 0 0 0 4px rgba(168, 85, 247, 0.45), 0 8px 18px rgba(0, 0, 0, 0.5);
-}
 
 /* ── Custom Map Zoom & Navigation Controls (Light & Dark Theme) ── */
 .custom-zoom-controls {
@@ -1268,18 +1189,6 @@ select {
   background: #0369a1;
 }
 
-.popup-wifi-tag {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 10.5px;
-  font-weight: 700;
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: rgba(168, 85, 247, 0.15);
-  color: #a855f7;
-  border: 1px solid rgba(168, 85, 247, 0.3);
-}
 
 .popup-gmaps-btn {
   display: inline-flex;
@@ -1594,6 +1503,22 @@ select {
   display: block;
 }
 
+.player-body iframe,
+.player-body img {
+  position: absolute;
+  inset: 0;
+  width: 100% !important;
+  height: 100% !important;
+  border: 0;
+  display: block;
+  background: #000000;
+}
+
+.player-body-iframe,
+.player-body-snapshot {
+  position: relative;
+}
+
 .hls-wrap {
   position: absolute;
   inset: 0;
@@ -1689,7 +1614,6 @@ select {
 }
 
 .cam-card,
-.wifi-card-btn,
 .empty-state-box,
 .network-alert-card,
 .foot-legal-content,
@@ -1701,19 +1625,14 @@ select {
 }
 
 .cam-card:hover,
-.wifi-card-btn:hover,
 .popup-gmaps-btn:hover,
 .alert-retry-btn:hover:not(:disabled) {
   transform: none;
 }
 
 .cam-card,
-.wifi-card-btn {
-  transition: background-color 0.15s ease, border-color 0.15s ease;
-}
 
 .cam-card:hover .cam-chevron,
-.wifi-card-btn:hover .cam-chevron,
 .foot-chevron.is-open,
 .zoom-btn:hover,
 [data-theme="dark"] .zoom-btn:hover,
@@ -1721,31 +1640,18 @@ select {
   color: var(--accent-strong);
 }
 
-.wifi-card-btn.active {
-  background: var(--bg-card-active);
-}
 
-.wifi-icon-wrap {
-  border-color: var(--border-card);
-}
 
 .camera-marker-pin .pin-inner {
   background: var(--marker-color, #10b981);
 }
 
-.wifi-pin-inner {
-  background: var(--accent);
-}
 
 .camera-marker-pin .pin-pointer {
   border-top-color: var(--accent);
 }
 
 .marker-selected .pin-inner,
-.wifi-marker-pin.marker-selected .wifi-pin-inner {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-}
 
 .modal-backdrop {
   backdrop-filter: none;
@@ -1876,14 +1782,9 @@ select {
 
   /* Cards */
   .cam-card,
-  .wifi-card-btn {
-    padding: 8px 10px;
-    gap: 10px;
-    border-radius: 10px;
-  }
 
   .cam-status-pill,
-  .wifi-icon-wrap {
+  .x-removed {
     width: 30px;
     height: 30px;
     border-radius: 8px;
@@ -2294,9 +2195,6 @@ select {
   color: var(--accent-strong);
 }
 
-.source-filter-btn.active.src-ponorogo {
-  color: #10b981;
-}
 
 .source-filter-btn.active.src-madiun {
   color: #38bdf8;
@@ -2350,6 +2248,12 @@ select {
   color: #38bdf8;
   border: 1px solid rgba(56, 189, 248, 0.4);
   background: rgba(56, 189, 248, 0.12);
+}
+
+.popup-source-badge.nusantara {
+  color: #0ea5e9;
+  border: 1px solid rgba(14, 165, 233, 0.4);
+  background: rgba(14, 165, 233, 0.12);
 }
 
 /* Badge huruf kecil pada pin marker Madiun */

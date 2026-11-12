@@ -3,25 +3,21 @@ import {
   Cctv,
   Video,
   VideoOff,
-  Wifi,
   Search,
   X,
   MapPin,
   Loader2,
   RotateCcw,
-  Layers,
   ChevronRight,
   ChevronDown,
   ShieldCheck,
   Sun,
   Moon,
-  WifiOff,
   CloudOff,
 } from 'lucide-react';
 import MapView from './MapView';
 import CameraPlayer from './CameraPlayer';
 import {
-  fetchCameras,
   fetchMadiunCameras,
   fetchMagetanCameras,
   fetchTrenggalekCameras,
@@ -37,48 +33,29 @@ import {
   fetchBondowosoCameras,
   fetchSitubondoCameras,
   fetchPasuruanCameras,
+  fetchNusantaraCameras,
   startSurabayaStream,
   stopSurabayaStream,
   startGresikStream,
   heartbeatGresikStream,
   stopGresikStream,
-  fetchWifiPoints,
-  fetchStreamUrl,
   getCachedCameras,
-  getCachedWifi,
   getLastSyncTime,
   saveOfflineData,
   formatApiErrorMessage,
 } from './api';
-import type { Camera, CameraSource, StreamInfo, WifiPoint } from './types';
+import type { Camera, CameraSource, StreamInfo } from './types';
 
-type TabFilter = 'all' | 'cctv' | 'wifi';
+type TabFilter = 'all' | 'cctv';
 type StatusFilter = 'all' | 'active' | 'inactive';
 type ThemeMode = 'dark' | 'light';
 type SourceFilter = CameraSource | 'all';
 
-/** Normalisasi sumber kamera: data lama tanpa `source` dianggap Ponorogo. */
-function cameraSource(camera: Camera): CameraSource {
-  if (camera.source === 'madiun') return 'madiun';
-  if (camera.source === 'magetan') return 'magetan';
-  if (camera.source === 'trenggalek') return 'trenggalek';
-  if (camera.source === 'kediri') return 'kediri';
-  if (camera.source === 'tulungagung') return 'tulungagung';
-  if (camera.source === 'malang') return 'malang';
-  if (camera.source === 'mojokerto') return 'mojokerto';
-  if (camera.source === 'surabaya') return 'surabaya';
-  if (camera.source === 'bojonegoro') return 'bojonegoro';
-  if (camera.source === 'gresik') return 'gresik';
-  if (camera.source === 'tuban') return 'tuban';
-  if (camera.source === 'banyuwangi') return 'banyuwangi';
-  if (camera.source === 'bondowoso') return 'bondowoso';
-  if (camera.source === 'situbondo') return 'situbondo';
-  if (camera.source === 'pasuruan') return 'pasuruan';
-  return 'ponorogo';
+function cameraSource(camera: Camera): CameraSource | undefined {
+  return camera.source;
 }
 
-/** Label tampilan ringkas untuk tiap sumber kamera. */
-function sourceLabel(source: CameraSource): string {
+function sourceLabel(source: CameraSource | undefined): string {
   if (source === 'madiun') return 'Madiun';
   if (source === 'magetan') return 'Magetan';
   if (source === 'trenggalek') return 'Trenggalek';
@@ -94,37 +71,14 @@ function sourceLabel(source: CameraSource): string {
   if (source === 'bondowoso') return 'Bondowoso';
   if (source === 'situbondo') return 'Situbondo';
   if (source === 'pasuruan') return 'Pasuruan';
-  return 'Ponorogo';
+  if (source === 'nusantara') return 'Nusantara';
+  if (source === 'bandung') return 'Bandung';
+  return 'Lainnya';
 }
 
-const SOURCE_OPTIONS: Array<{ id: CameraSource; title: string }> = [
-  { id: 'ponorogo', title: 'CCTV Kabupaten Ponorogo' },
-  { id: 'madiun', title: 'CCTV Kota Madiun (primary IP, Villabs fallback)' },
-  { id: 'magetan', title: 'CCTV Kabupaten Magetan (Sarangan Vision)' },
-  { id: 'trenggalek', title: 'CCTV Kabupaten Trenggalek (GEOTIK)' },
-  { id: 'kediri', title: 'CCTV Kota Kediri (ATCS)' },
-  { id: 'tulungagung', title: 'CCTV Kabupaten Tulungagung' },
-  { id: 'malang', title: 'CCTV Kota Malang' },
-  { id: 'mojokerto', title: 'CCTV Kabupaten Mojokerto' },
-  { id: 'surabaya', title: 'CCTV Kota Surabaya' },
-  { id: 'bojonegoro', title: 'CCTV Kabupaten Bojonegoro' },
-  { id: 'gresik', title: 'CCTV Kabupaten Gresik' },
-  { id: 'tuban', title: 'CCTV Kabupaten Tuban' },
-  { id: 'banyuwangi', title: 'CCTV Kabupaten Banyuwangi' },
-  { id: 'bondowoso', title: 'CCTV Kabupaten Bondowoso' },
-  { id: 'situbondo', title: 'CCTV Kabupaten Situbondo' },
-  { id: 'pasuruan', title: 'CCTV Kabupaten Pasuruan' },
-];
 
 function canPlayCamera(camera: Camera): boolean {
   return camera.status === 'online' || (camera.status === 'unknown' && Boolean(camera.streamUrl));
-}
-
-function isWifiActive(status?: string): boolean {
-  if (!status) return true;
-  return !['offline', 'inactive', 'nonaktif', 'disconnected', 'down', 'false', '0'].includes(
-    status.trim().toLowerCase()
-  );
 }
 
 function formatSyncTime(iso: string): string {
@@ -148,7 +102,6 @@ const App: React.FC = () => {
 
   // Inisialisasi awal dengan data cache offline agar UI langsung tampil cepat (0ms)
   const [cameras, setCameras] = useState<Camera[]>(() => getCachedCameras());
-  const [wifiPoints, setWifiPoints] = useState<WifiPoint[]>(() => getCachedWifi());
   const [isUsingCache, setIsUsingCache] = useState<boolean>(() => getCachedCameras().length > 0);
   const [lastSyncTime, setLastSyncTime] = useState<string | null>(() => getLastSyncTime());
   const [isOffline, setIsOffline] = useState<boolean>(() => (typeof navigator !== 'undefined' ? !navigator.onLine : false));
@@ -158,18 +111,16 @@ const App: React.FC = () => {
   const [apiError, setApiError] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const deferredSearchQuery = useDeferredValue(searchQuery);
-  const [activeTab, setActiveTab] = useState<TabFilter>('all');
-  const [sourceFilter, setSourceFilter] = useState<SourceFilter>('all');
-  const [isSourceFilterOpen, setIsSourceFilterOpen] = useState<boolean>(false);
-  const [mapFocus, setMapFocus] = useState<{ latitude: number; longitude: number; zoom: number; key: number } | null>(null);
+  const [activeTab] = useState<TabFilter>('all');
+  const [sourceFilter] = useState<SourceFilter>('all');
+  const [regionFilter] = useState<string>('all');
+  const [mapFocus] = useState<{ latitude: number; longitude: number; zoom: number; key: number } | null>(null);
   const [cameraStatusFilter, setCameraStatusFilter] = useState<StatusFilter>('all');
-  const [wifiStatusFilter, setWifiStatusFilter] = useState<StatusFilter>('all');
   const [isLegalOpen, setIsLegalOpen] = useState<boolean>(false);
 
   const [selectedCamera, setSelectedCamera] = useState<Camera | null>(null);
   const [selectedCameraSlug, setSelectedCameraSlug] = useState<string | null>(null);
-  const [selectedWifiId, setSelectedWifiId] = useState<number | null>(null);
-  const [wifiFocusKey, setWifiFocusKey] = useState<number>(0);
+
   const [focusedLocation, setFocusedLocation] = useState<{ latitude: number; longitude: number } | null>(null);
 
   const [streamInfo, setStreamInfo] = useState<StreamInfo | null>(null);
@@ -225,13 +176,9 @@ const App: React.FC = () => {
     setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
   }, []);
 
-  // Muat daftar kamera & WiFi dari API dengan ketahanan offline. Data primer
-  // tampil lebih dulu; sumber regional yang lebih banyak dimuat setelahnya agar
-  // peta tidak menunggu semua upstream sekaligus.
+  // Muat daftar kamera dari API dengan ketahanan offline.
   const loadData = useCallback((isManualRefresh = false): Promise<void> => {
     if (loadInFlightRef.current) {
-      // Jangan tunggu task yang sudah dibatalkan (mis. remount StrictMode atau
-      // `pagehide`); task itu tidak akan pernah mengisi state lagi.
       if (!loadAbortRef.current?.signal.aborted) return loadInFlightRef.current;
       loadInFlightRef.current = null;
     }
@@ -242,22 +189,6 @@ const App: React.FC = () => {
       loadAbortRef.current = controller;
       const signal = controller.signal;
       try {
-        let primaryError: unknown = null;
-        const ponorogoWithFallback = fetchCameras(signal).catch((error) => {
-          primaryError = error;
-          return getCachedCameras().filter((camera) => (camera.source || 'ponorogo') === 'ponorogo');
-        });
-        const [cams, wifi] = await Promise.all([ponorogoWithFallback, fetchWifiPoints(signal)]);
-        if (controller.signal.aborted) return;
-        startTransition(() => setCameras((previous) => {
-          const regional = previous.filter((camera) => cameraSource(camera) !== 'ponorogo');
-          return [...cams, ...regional];
-        }));
-        setWifiPoints(wifi);
-        setLoading(false);
-        setApiError(primaryError ? 'Sumber CCTV Ponorogo sedang bermasalah; sumber lain tetap dimuat.' : '');
-        setIsUsingCache(Boolean(primaryError && cams.length > 0));
-
         const [
           madiunCams,
           magetanCams,
@@ -274,6 +205,7 @@ const App: React.FC = () => {
           bondowosoCams,
           situbondoCams,
           pasuruanCams,
+          nusantaraCams,
         ] = await Promise.all([
           fetchMadiunCameras(signal),
           fetchMagetanCameras(signal),
@@ -290,10 +222,10 @@ const App: React.FC = () => {
           fetchBondowosoCameras(signal),
           fetchSitubondoCameras(signal),
           fetchPasuruanCameras(signal),
+          fetchNusantaraCameras(signal),
         ]);
         if (controller.signal.aborted) return;
         const mergedCams = [
-          ...cams,
           ...madiunCams,
           ...magetanCams,
           ...trenggalekCams,
@@ -309,28 +241,20 @@ const App: React.FC = () => {
           ...bondowosoCams,
           ...situbondoCams,
           ...pasuruanCams,
+          ...nusantaraCams,
         ];
         startTransition(() => setCameras(mergedCams));
-        saveOfflineData(mergedCams, wifi);
+        saveOfflineData(mergedCams);
         setLastSyncTime(new Date().toISOString());
+        setApiError('');
+        setIsUsingCache(false);
       } catch (err) {
         if (controller.signal.aborted) return;
-        const friendlyMsg = formatApiErrorMessage(err);
-        setApiError(friendlyMsg);
-
-        // Fallback ke cache jika data memori kosong.
+        setApiError(formatApiErrorMessage(err));
         const cachedCams = getCachedCameras();
         if (cachedCams.length > 0) {
-          startTransition(() => setCameras((prev) => {
-            const merged = new Map(prev.map((camera) => [camera.slug, camera]));
-            for (const camera of cachedCams) merged.set(camera.slug, camera);
-            return [...merged.values()];
-          }));
+          startTransition(() => setCameras(cachedCams));
           setIsUsingCache(true);
-        }
-        const cachedWifi = getCachedWifi();
-        if (cachedWifi.length > 0) {
-          setWifiPoints((prev) => (prev.length === 0 ? cachedWifi : prev));
         }
       } finally {
         loadInFlightRef.current = null;
@@ -478,11 +402,11 @@ const App: React.FC = () => {
       return;
     }
 
-    // HLS, FLV, dan MJPEG memiliki URL statis; stream proxy tetap server-side.
-    if ((cam.protocol === 'hls' || cam.protocol === 'flv' || cam.protocol === 'mjpeg') && cam.streamUrl) {
+    // HLS, FLV, MJPEG, iframe, dan snapshot memiliki URL statis.
+    if ((cam.protocol === 'hls' || cam.protocol === 'flv' || cam.protocol === 'mjpeg' || cam.protocol === 'iframe' || cam.protocol === 'snapshot') && (cam.streamUrl || cam.thumbUrl)) {
       setStreamBusy(false);
       setStreamInfo({
-        wss: cam.streamUrl,
+        wss: cam.streamUrl || cam.thumbUrl || '',
         mode: cam.protocol,
         expiresAt: null,
         camera: cam,
@@ -490,64 +414,16 @@ const App: React.FC = () => {
       return;
     }
 
-    setStreamBusy(true);
-    try {
-      const info = await fetchStreamUrl(cam.slug);
-      if (refreshKeyRef.current !== key) return;
-
-      setStreamInfo({
-        wss: info.wss,
-        mode: info.mode,
-        expiresAt: info.expiresAt,
-        camera: { ...cam, expiresAt: info.expiresAt },
-      });
-    } catch (err) {
-      if (refreshKeyRef.current === key) {
-        setStreamError((err as Error).message);
-      }
-    } finally {
-      if (refreshKeyRef.current === key) {
-        setStreamBusy(false);
-      }
-    }
+    setStreamBusy(false);
+    setStreamError('Stream tidak tersedia untuk kamera ini.');
   }, [stopActiveGresik]);
 
   const handleMapCameraSelect = useCallback((cam: Camera): void => {
     void openCamera(cam);
   }, [openCamera]);
-  const handleMapWifiSelect = useCallback((id: number): void => {
-    setSelectedWifiId(id);
-  }, []);
-
-  // Perbarui token stream URL sebelum kedaluwarsa (~5 mnt)
+  // Stream regional memakai URL statis/proxy, tidak ada signed URL yang perlu diperbarui.
   const refreshStreamUrl = useCallback(
-    async (slug: string): Promise<StreamInfo | null> => {
-      // Sumber Madiun (primary IP/fallback), Magetan (Sarangan Vision) & Trenggalek (Portal TGX)
-      // memakai URL statis, sehingga tidak ada signed URL yang perlu diperbarui.
-      if (slug.startsWith('villabs-') || slug.startsWith('magetan-') || slug.startsWith('trenggalek-') || slug.startsWith('kediri-') || slug.startsWith('tulungagung-') || slug.startsWith('malang-') || slug.startsWith('mojokerto-') || slug.startsWith('surabaya-') || slug.startsWith('bojonegoro-') || slug.startsWith('gresik-') || slug.startsWith('tuban-') || slug.startsWith('banyuwangi-') || slug.startsWith('bondowoso-') || slug.startsWith('situbondo-') || slug.startsWith('pasuruan-')) {
-        return null;
-      }
-
-      const info = await fetchStreamUrl(slug);
-      let updatedInfo: StreamInfo | null = null;
-
-      setStreamInfo((prev) => {
-        if (!prev) return null;
-        updatedInfo = {
-          ...prev,
-          wss: info.wss,
-          mode: info.mode,
-          expiresAt: info.expiresAt,
-          camera: {
-            ...prev.camera,
-            expiresAt: info.expiresAt,
-          },
-        };
-        return updatedInfo;
-      });
-
-      return updatedInfo;
-    },
+    async (_slug: string): Promise<StreamInfo | null> => null,
     []
   );
 
@@ -606,75 +482,8 @@ const App: React.FC = () => {
     return index;
   }, [cameras]);
 
-  // Filter kamera & WiFi berdasarkan tab aktif ('all' | 'cctv' | 'wifi') & pencarian
-  const sourceCounts = useMemo<Record<CameraSource, number>>(() => {
-    const counts: Record<CameraSource, number> = {
-      ponorogo: 0,
-      madiun: 0,
-      magetan: 0,
-      trenggalek: 0,
-      kediri: 0,
-      tulungagung: 0,
-      malang: 0,
-      mojokerto: 0,
-      surabaya: 0,
-      bojonegoro: 0,
-      gresik: 0,
-      tuban: 0,
-      banyuwangi: 0,
-      bondowoso: 0,
-      situbondo: 0,
-      pasuruan: 0,
-    };
-    for (const camera of cameras) counts[cameraSource(camera)] += 1;
-    return counts;
-  }, [cameras]);
-  // Pindah fokus peta saat filter sumber diubah
-  const handleSourceChange = useCallback((source: SourceFilter): void => {
-    setSourceFilter(source);
-    setIsSourceFilterOpen(false);
-    setFocusedLocation(null);
-    const key = Date.now();
-    if (source === 'madiun') {
-      setMapFocus({ latitude: -7.6295, longitude: 111.5233, zoom: 13, key });
-    } else if (source === 'magetan') {
-      setMapFocus({ latitude: -7.6565, longitude: 111.302, zoom: 12, key });
-    } else if (source === 'trenggalek') {
-      setMapFocus({ latitude: -8.12, longitude: 111.62, zoom: 10, key });
-    } else if (source === 'kediri') {
-      setMapFocus({ latitude: -7.8167, longitude: 112.0165, zoom: 13, key });
-    } else if (source === 'tulungagung') {
-      setMapFocus({ latitude: -8.0646, longitude: 111.9007, zoom: 12, key });
-    } else if (source === 'malang') {
-      setMapFocus({ latitude: -7.98, longitude: 112.63, zoom: 12, key });
-    } else if (source === 'mojokerto') {
-      setMapFocus({ latitude: -7.63, longitude: 112.55, zoom: 11, key });
-    } else if (source === 'surabaya') {
-      setMapFocus({ latitude: -7.25, longitude: 112.75, zoom: 11, key });
-    } else if (source === 'bojonegoro') {
-      setMapFocus({ latitude: -7.15, longitude: 111.88, zoom: 11, key });
-    } else if (source === 'gresik') {
-      setMapFocus({ latitude: -6.9, longitude: 112.6, zoom: 10, key });
-    } else if (source === 'tuban') {
-      setMapFocus({ latitude: -6.9845, longitude: 111.936, zoom: 10, key });
-    } else if (source === 'banyuwangi') {
-      setMapFocus({ latitude: -8.2618, longitude: 114.1794, zoom: 9, key });
-    } else if (source === 'bondowoso') {
-      setMapFocus({ latitude: -7.921, longitude: 113.829, zoom: 13, key });
-    } else if (source === 'situbondo') {
-      setMapFocus({ latitude: -7.8062, longitude: 114.0393, zoom: 10, key });
-    } else if (source === 'pasuruan') {
-      setMapFocus({ latitude: -7.6339, longitude: 112.9079, zoom: 11, key });
-    } else if (source === 'ponorogo') {
-      setMapFocus({ latitude: -7.8694, longitude: 111.47, zoom: 12, key });
-    } else {
-      setMapFocus({ latitude: -7.75, longitude: 111.5, zoom: 9, key });
-    }
-  }, []);
-
+  // Filter kamera berdasarkan pencarian
   const filteredCameras = useMemo(() => {
-    if (activeTab === 'wifi') return [];
-
     const q = deferredSearchQuery.trim().toLowerCase();
     return cameras.filter((camera) => {
       const searchKey = cameraSearchIndex.get(camera.slug) || '';
@@ -682,23 +491,61 @@ const App: React.FC = () => {
       const matchesStatus = cameraStatusFilter === 'all' ||
         (cameraStatusFilter === 'active' ? canPlayCamera(camera) : !canPlayCamera(camera));
       const matchesSource = sourceFilter === 'all' || cameraSource(camera) === sourceFilter;
-      return matchesSearch && matchesStatus && matchesSource;
+      const matchesRegion = regionFilter === 'all' || cameraSource(camera) !== 'nusantara' || camera.region === regionFilter;
+      return matchesSearch && matchesStatus && matchesSource && matchesRegion;
     });
   }, [cameras, activeTab, deferredSearchQuery, cameraStatusFilter, sourceFilter, cameraSearchIndex]);
 
-  const filteredWifi = useMemo(() => {
-    if (activeTab === 'cctv') return [];
+  // Peta: Pengadilan Agama dalam satu pengadilan digabung menjadi satu titik
+  // (rata-rata koordinat kameranya) agar tidak bertumpuk dan lebih akurat.
+  const mapCameras = useMemo<Camera[]>(() => {
+    const paGroups = new Map<string, Camera[]>();
+    const result: Camera[] = [];
+    for (const camera of filteredCameras) {
+      const isPA = camera.category === 'pengadilan' || (camera.sourceName || '').toLowerCase().includes('badilag');
+      if (!isPA) {
+        result.push(camera);
+        continue;
+      }
+      const courtKey = (camera.location || camera.name).split('(')[0].trim() || camera.name;
+      if (!paGroups.has(courtKey)) paGroups.set(courtKey, []);
+      paGroups.get(courtKey)!.push(camera);
+    }
+    for (const cams of paGroups.values()) {
+      if (cams.length === 1) {
+        result.push(cams[0]);
+        continue;
+      }
+      const lat = cams.reduce((s, c) => s + c.latitude, 0) / cams.length;
+      const lng = cams.reduce((s, c) => s + c.longitude, 0) / cams.length;
+      result.push({ ...cams[0], latitude: lat, longitude: lng });
+    }
+    return result;
+  }, [filteredCameras]);
 
-    const q = searchQuery.trim().toLowerCase();
-    return wifiPoints.filter((wifi) => {
-      const matchesSearch = !q ||
-        wifi.name.toLowerCase().includes(q) ||
-        wifi.location.toLowerCase().includes(q);
-      const matchesStatus = wifiStatusFilter === 'all' ||
-        (wifiStatusFilter === 'active' ? isWifiActive(wifi.status) : !isWifiActive(wifi.status));
-      return matchesSearch && matchesStatus;
+  const cameraGroup = useCallback((camera: Camera): string => {
+    if (camera.category === 'pengadilan' || (camera.sourceName || '').toLowerCase().includes('badilag')) {
+      return 'Pengadilan Agama';
+    }
+    if (cameraSource(camera) !== 'nusantara') {
+      return sourceLabel(cameraSource(camera));
+    }
+    return camera.city || camera.region || 'Lainnya';
+  }, []);
+
+  const groupedCameras = useMemo<Array<[string, Camera[]]>>(() => {
+    const groups = new Map<string, Camera[]>();
+    for (const camera of filteredCameras) {
+      const key = cameraGroup(camera);
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key)!.push(camera);
+    }
+    return [...groups.entries()].sort((a, b) => {
+      if (a[0] === 'Pengadilan Agama') return 1;
+      if (b[0] === 'Pengadilan Agama') return -1;
+      return a[0].localeCompare(b[0], 'id');
     });
-  }, [wifiPoints, activeTab, searchQuery, wifiStatusFilter]);
+  }, [filteredCameras, cameraGroup]);
 
   return (
     <div className="app">
@@ -762,7 +609,7 @@ const App: React.FC = () => {
               <input
                 type="text"
                 className="search-input"
-                placeholder="Cari CCTV atau WiFi publik…"
+                placeholder="Cari CCTV publik…"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
@@ -778,118 +625,26 @@ const App: React.FC = () => {
               )}
             </div>
 
-            {/* Filter Tabs Kategori: Semua, CCTV, WiFi */}
-            <div className="filter-tabs">
-              <button
-                type="button"
-                className={`tab-btn ${activeTab === 'all' ? 'active' : ''}`}
-                onClick={() => setActiveTab('all')}
-              >
-                <Layers size={13} />
-                <span>Semua</span>
-                <span className="tab-counter">{cameras.length + wifiPoints.length}</span>
-              </button>
-              <button
-                type="button"
-                className={`tab-btn tab-btn-cctv ${activeTab === 'cctv' ? 'active' : ''}`}
-                onClick={() => setActiveTab('cctv')}
-              >
-                <Cctv size={13} />
-                <span>CCTV</span>
-                <span className="tab-counter count-cctv">{cameras.length}</span>
-              </button>
-              <button
-                type="button"
-                className={`tab-btn tab-btn-wifi ${activeTab === 'wifi' ? 'active' : ''}`}
-                onClick={() => setActiveTab('wifi')}
-              >
-                <Wifi size={13} />
-                <span>WiFi</span>
-                <span className="tab-counter count-wifi">{wifiPoints.length}</span>
-              </button>
-            </div>
-
-            <div className="toolbar-status-filter" role="group" aria-label="Filter status">
+            {/* Filter status kamera */}
+            <div className="toolbar-status-filter" style={{ marginTop: 8 }} role="group" aria-label="Filter status">
               {(['all', 'active', 'inactive'] as StatusFilter[]).map((filter) => (
                 <button
                   key={filter}
                   type="button"
-                  className={`status-filter-btn ${(
-                    activeTab === 'wifi' ? wifiStatusFilter : cameraStatusFilter
-                  ) === filter ? 'active' : ''}`}
-                  onClick={() => {
-                    if (activeTab === 'wifi') setWifiStatusFilter(filter);
-                    else setCameraStatusFilter(filter);
-                  }}
+                  className={`status-filter-btn ${cameraStatusFilter === filter ? 'active' : ''}`}
+                  onClick={() => setCameraStatusFilter(filter)}
                 >
                   {filter === 'all' ? 'Semua' : filter === 'active' ? 'Aktif' : 'Nonaktif'}
                 </button>
               ))}
             </div>
 
-            {/* Filter sumber CCTV: ringkas secara default dan bisa dibuka saat diperlukan. */}
-            {activeTab !== 'wifi' && (
-              <div className="source-filter" role="group" aria-label="Filter sumber CCTV">
-                <div className="source-filter-header">
-                  <button
-                    type="button"
-                    className={`source-filter-toggle ${sourceFilter !== 'all' ? `src-${sourceFilter}` : ''}`}
-                    onClick={() => setIsSourceFilterOpen((open) => !open)}
-                    aria-expanded={isSourceFilterOpen}
-                    aria-controls="source-filter-options"
-                    title="Buka atau tutup pilihan sumber CCTV"
-                  >
-                    <span className="source-filter-heading">Sumber CCTV</span>
-                    <span className="source-filter-selected">
-                      {sourceFilter === 'all' ? 'Pilih sumber' : sourceLabel(sourceFilter)}
-                    </span>
-                    <span className="source-filter-selected-count">
-                      {sourceFilter === 'all' ? cameras.length : sourceCounts[sourceFilter]}
-                    </span>
-                    <ChevronDown
-                      size={14}
-                      className={`source-filter-chevron ${isSourceFilterOpen ? 'is-open' : ''}`}
-                    />
-                  </button>
-                  {sourceFilter !== 'all' && (
-                    <button
-                      type="button"
-                      className="source-filter-clear"
-                      onClick={() => handleSourceChange('all')}
-                      title="Tampilkan semua sumber"
-                      aria-label="Tampilkan semua sumber"
-                    >
-                      <X size={13} />
-                    </button>
-                  )}
-                </div>
-                {isSourceFilterOpen && (
-                  <div id="source-filter-options" className="source-filter-options" role="group" aria-label="Daftar sumber CCTV">
-                    {SOURCE_OPTIONS.map(({ id, title }) => {
-                      const count = sourceCounts[id];
-                      return (
-                        <button
-                          key={id}
-                          type="button"
-                          className={`source-filter-btn src-${id} ${sourceFilter === id ? 'active' : ''}`}
-                          onClick={() => handleSourceChange(id)}
-                          title={title}
-                        >
-                          <span className="source-filter-name">{sourceLabel(id)}</span>
-                          <span className="source-count">{count}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            )}
           </div>
 
           {apiError && (
             <div className={`network-alert-card ${isUsingCache ? 'is-warning' : 'is-error'}`}>
               <div className="alert-icon-wrap">
-                {isOffline ? <WifiOff size={16} /> : <CloudOff size={16} />}
+                <CloudOff size={16} />
               </div>
               <div className="alert-body">
                 <div className="alert-header-row">
@@ -925,64 +680,68 @@ const App: React.FC = () => {
           {/* Area Scroll Khusus dengan Scrollbar Custom & Sticky Headers Rapi */}
           <div className="sidebar-scroll-area custom-scrollbar">
             {/* List Kamera dengan Sticky Section Header Opaque Rapi */}
-            {activeTab !== 'wifi' && (
-              <div className="section-block">
-                <div className="section-sticky-header">
-                  <div className="section-title">
-                    <Cctv size={15} className="text-sky" />
-                    <span>Kamera CCTV ({filteredCameras.length})</span>
-                  </div>
-                  {loading && <Loader2 size={13} className="animate-spin text-muted" />}
-                </div>
+            {true && (
+              <div className="cam-group-list">
+                {loading && <Loader2 size={13} className="animate-spin text-muted" style={{ margin: 8 }} />}
+                  {groupedCameras.map(([group, cams]) => (
+                    <div key={group} className="section-block" style={{ marginBottom: 8 }}>
+                      <div className="section-sticky-header">
+                        <div className="section-title">
+                          <Cctv size={15} className="text-sky" />
+                          <span>{group} ({cams.length})</span>
+                        </div>
+                      </div>
+                      <ul className="cam-list">
+                        {cams.map((cam) => {
+                          const isSelected = selectedCamera?.slug === cam.slug;
+                          const isOnline = cam.status === 'online';
+                          const isUnknownPlayable = cam.status === 'unknown' && Boolean(cam.streamUrl);
+                          const statusClass = isOnline ? 'online' : isUnknownPlayable ? 'unknown' : 'offline';
 
-                <ul className="cam-list">
-                  {filteredCameras.map((cam) => {
-                    const isSelected = selectedCamera?.slug === cam.slug;
-                    const isOnline = cam.status === 'online';
-                    const isUnknownPlayable = cam.status === 'unknown' && Boolean(cam.streamUrl);
-                    const statusClass = isOnline ? 'online' : isUnknownPlayable ? 'unknown' : 'offline';
+                          return (
+                            <li key={cam.slug}>
+                              <button
+                                type="button"
+                                className={`cam-card ${isSelected ? 'active' : ''}`}
+                                onClick={() => handleSidebarCameraClick(cam)}
+                              >
+                                <div className={`cam-status-pill ${statusClass}`}>
+                                  {isOnline || isUnknownPlayable ? <Video size={14} /> : <VideoOff size={14} />}
+                                </div>
 
-                    return (
-                      <li key={cam.slug}>
-                        <button
-                          type="button"
-                          className={`cam-card ${isSelected ? 'active' : ''}`}
-                          onClick={() => handleSidebarCameraClick(cam)}
-                        >
-                          <div className={`cam-status-pill ${statusClass}`}>
-                            {isOnline || isUnknownPlayable ? <Video size={14} /> : <VideoOff size={14} />}
-                          </div>
+                                <div className="cam-info">
+                                  <div className="cam-name">{cam.name}</div>
+                                  <div className="cam-loc">
+                                    <MapPin size={11} className="loc-icon" />
+                                    <span>{cam.location}</span>
+                                  </div>
+                                </div>
 
-                          <div className="cam-info">
-                            <div className="cam-name">{cam.name}</div>
-                            <div className="cam-loc">
-                              <MapPin size={11} className="loc-icon" />
-                              <span>{cam.location}</span>
-                            </div>
-                          </div>
+                                {cam.channel && (
+                                  <span className="cam-channel-tag">CH {cam.channel}</span>
+                                )}
 
-                          {cam.channel && (
-                            <span className="cam-channel-tag">CH {cam.channel}</span>
-                          )}
+                                <span className={`cam-source-tag ${cameraSource(cam)}`}>
+                                  {sourceLabel(cameraSource(cam))}
+                                </span>
 
-                          <span className={`cam-source-tag ${cameraSource(cam)}`}>
-                            {sourceLabel(cameraSource(cam))}
-                          </span>
-
-                          <ChevronRight size={15} className="cam-chevron" />
-                        </button>
-                      </li>
-                    );
-                  })}
+                                <ChevronRight size={15} className="cam-chevron" />
+                              </button>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </div>
+                  ))}
 
                   {filteredCameras.length === 0 && !loading && (
-                    <li className="empty-state-box">
+                    <div className="empty-state-box">
                       {apiError && !isUsingCache ? (
                         <>
                           <CloudOff size={28} className="empty-icon text-rose" />
                           <div className="empty-state-title">Tidak Dapat Mengambil Data CCTV</div>
                           <div className="empty-state-desc">
-                            Server pusat Nawasara sedang tidak dapat dijangkau atau perangkat sedang offline.
+                            Server sumber sedang tidak dapat dijangkau atau perangkat sedang offline.
                           </div>
                           <button
                             type="button"
@@ -1001,83 +760,9 @@ const App: React.FC = () => {
                           <div>Tidak ada CCTV yang cocok</div>
                         </>
                       )}
-                    </li>
+                    </div>
                   )}
-                </ul>
-              </div>
-            )}
-
-            {/* List WiFi dengan Sticky Section Header Opaque Rapi */}
-            {activeTab !== 'cctv' && (
-              <div className="section-block wifi-section-block">
-                <div className="section-sticky-header">
-                  <div className="section-title">
-                    <Wifi size={15} className="text-purple" />
-                    <span>Hotspot WiFi ({filteredWifi.length})</span>
-                  </div>
                 </div>
-
-                <ul className="wifi-list">
-                  {filteredWifi.map((wifi) => {
-                    const isSelected = selectedWifiId === wifi.id;
-                    return (
-                      <li key={wifi.id}>
-                        <button
-                          type="button"
-                          className={`wifi-card-btn ${isSelected ? 'active' : ''}`}
-                          onClick={() => {
-                            setSelectedWifiId(wifi.id);
-                            setWifiFocusKey((prev) => prev + 1);
-                            setFocusedLocation({ latitude: wifi.latitude, longitude: wifi.longitude });
-                          }}
-                          title="Klik untuk membuka lokasi & info WiFi di peta"
-                        >
-                          <div className="wifi-icon-wrap">
-                            <Wifi size={14} />
-                          </div>
-                          <div className="cam-info">
-                            <div className="cam-name">{wifi.name}</div>
-                            <div className="cam-loc">
-                              <MapPin size={11} className="loc-icon" />
-                              <span>{wifi.location}</span>
-                            </div>
-                          </div>
-                          <ChevronRight size={15} className="cam-chevron" />
-                        </button>
-                      </li>
-                    );
-                  })}
-
-                  {filteredWifi.length === 0 && !loading && (
-                    <li className="empty-state-box">
-                      {apiError && !isUsingCache ? (
-                        <>
-                          <WifiOff size={28} className="empty-icon text-purple" />
-                          <div className="empty-state-title">Tidak Dapat Memuat Hotspot WiFi</div>
-                          <div className="empty-state-desc">
-                            Gagal menghubungi server publik Nawasara.
-                          </div>
-                          <button
-                            type="button"
-                            className="alert-retry-btn"
-                            onClick={() => void loadData(true)}
-                            disabled={isRefreshing}
-                            style={{ marginTop: 6 }}
-                          >
-                            <RotateCcw size={12} className={isRefreshing ? 'is-spinning' : ''} />
-                            <span>Hubungkan Kembali</span>
-                          </button>
-                        </>
-                      ) : (
-                        <>
-                          <Wifi size={22} className="empty-icon" />
-                          <div>Tidak ada hotspot WiFi yang cocok</div>
-                        </>
-                      )}
-                    </li>
-                  )}
-                </ul>
-              </div>
             )}
 
             {/* Sidebar Footer (Collapsible) */}
@@ -1114,17 +799,14 @@ const App: React.FC = () => {
         {/* Interactive Map */}
         <section className="map-wrap">
           <MapView
-            cameras={filteredCameras}
-            wifiPoints={filteredWifi}
+            cameras={mapCameras}
+
             selectedSlug={selectedCameraSlug}
             selectedCamera={selectedCamera}
-            selectedWifiId={selectedWifiId}
-            wifiFocusKey={wifiFocusKey}
             focusedLocation={focusedLocation}
             mapFocus={mapFocus}
             theme={theme}
             onSelect={handleMapCameraSelect}
-            onSelectWifi={handleMapWifiSelect}
           />
         </section>
       </main>

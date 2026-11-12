@@ -72,7 +72,7 @@ The proxy forces `mode=mjpeg` (a `jpeg` request is only one frame), validates th
 
 Playlist child URLs that require an upstream query use short-lived opaque IDs from `api/_lib/opaque-query.ts`; the actual query stays in server memory. Keep Fluid Compute/warm instances enabled for sources whose upstream session/query is instance-bound, or move those routes to a persistent media gateway.
 
-The legacy Ponorogo, Madiun, and Mojokerto live paths are direct upstream WebSocket feeds. They are not HTTP Functions and cannot be transparently relayed by the current Vercel file-function setup; if the signed Ponorogo URL must never reach the browser, deploy a dedicated WebSocket/media gateway rather than weakening the no-token rule.
+The legacy Madiun and Mojokerto live paths are direct upstream WebSocket feeds. They are not HTTP Functions and cannot be transparently relayed by the current Vercel file-function setup; if a signed upstream URL must never reach the browser, deploy a dedicated WebSocket/media gateway rather than weakening the no-token rule.
 
 `vercel.json` pins the function region to `sin1` (Singapore), which is closer to the Indonesian upstream sources than the Vercel default `iad1`. Configure all variables above in the Vercel project, commit all new `_lib` files (including `snapshots.json`) before deploying, then run `vercel build` and `vercel deploy --prebuilt` (or the normal Git deployment). Never commit `.env` or rotate any token that has appeared in local logs/history.
 

@@ -24,7 +24,6 @@ const BASE = (process.env.LENSAMAS_BASE || 'http://127.0.0.1:5199').replace(/\/+
 
 /** Endpoint list per sumber. Sesuaikan dengan routing di `api/_lib/hls-router.ts`. */
 const ROUTES = {
-  ponorogo: '/api/cameras',
   madiun: '/api/madiun',
   magetan: '/api/sarangan',
   trenggalek: '/api/trenggalek',

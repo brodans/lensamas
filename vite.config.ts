@@ -10,9 +10,6 @@ import tulungagungHandler from './api/_lib/tulungagung.js';
 import malangHandler from './api/_lib/malang.js';
 import hlsProxyHandler from './api/_lib/hls-router.js';
 import mojokertoHandler from './api/_lib/mojokerto.js';
-import camerasHandler from './api/cameras.js';
-import streamHandler from './api/stream/[slug].js';
-import wifiHandler from './api/wifi.js';
 
 function disableLocalRequestLogging(): void {
   process.env.REQUEST_LOG = '0';
@@ -95,21 +92,6 @@ function localApiPlugin(): Plugin {
           }));
         }
       }
-      return;
-    }
-
-    // `/api/cameras`, `/api/stream/<slug>`, dan `/api/wifi` memakai handler yang
-    // sama persis dengan deployment Vercel agar logika tidak berbeda.
-    if (url.pathname === '/api/cameras') {
-      await camerasHandler(req, res);
-      return;
-    }
-    if (url.pathname.startsWith('/api/stream/')) {
-      await streamHandler(req, res);
-      return;
-    }
-    if (url.pathname === '/api/wifi') {
-      await wifiHandler(req, res);
       return;
     }
 

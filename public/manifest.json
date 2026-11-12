@@ -1,7 +1,7 @@
 {
   "name": "LENSAMAS — Lensa Monitoring Area Strategis",
   "short_name": "LENSAMAS",
-  "description": "Lensa Monitoring Area Strategis untuk CCTV dan WiFi Publik",
+  "description": "Lensa Monitoring Area Strategis untuk CCTV Publik",
   "id": "/",
   "start_url": "/",
   "scope": "/",

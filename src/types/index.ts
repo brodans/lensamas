@@ -1,5 +1,4 @@
 export type CameraSource =
-  | 'ponorogo'
   | 'madiun'
   | 'magetan'
   | 'trenggalek'
@@ -14,7 +13,9 @@ export type CameraSource =
   | 'banyuwangi'
   | 'bondowoso'
   | 'situbondo'
-  | 'pasuruan';
+  | 'pasuruan'
+  | 'nusantara'
+  | 'bandung';
 
 export interface Camera {
   slug: string;
@@ -28,10 +29,20 @@ export interface Camera {
   channel?: number;
   codec?: string;
   expiresAt?: Date | null;
-  /** Sumber data kamera. Default dianggap 'ponorogo' bila tidak diisi. */
+  /** Sumber data kamera. */
   source?: CameraSource;
   /** Protokol live stream: go2rtc, jsmpeg, hls, atau FLV-over-WebSocket. */
-  protocol?: 'go2rtc' | 'jsmpeg' | 'hls' | 'flv' | 'mjpeg';
+  protocol?: 'go2rtc' | 'jsmpeg' | 'hls' | 'flv' | 'mjpeg' | 'external' | 'iframe' | 'snapshot';
+  /** URL halaman live eksternal (mis. cctvnusantara.com) bila stream tidak dapat diputar langsung. */
+  watchUrl?: string;
+  /** Provinsi/daerah untuk kamera Nusantara. */
+  region?: string;
+  /** Kategori kamera (Kota & Jalan, Wisata, dll). */
+  category?: string;
+  /** Nama sumber siaran asli. */
+  sourceName?: string;
+  /** Kota/kabupaten kamera (untuk pengelompokan). */
+  city?: string;
   /** URL WebSocket/HLS langsung atau proxy untuk sumber yang tidak butuh signed URL. */
   streamUrl?: string;
   /** URL HLS langsung yang dicoba ketika proxy same-origin diblokir upstream. */
@@ -44,15 +55,7 @@ export interface Camera {
   streamConfigured?: boolean;
 }
 
-export interface WifiPoint {
-  id: number;
-  name: string;
-  location: string;
-  latitude: number;
-  longitude: number;
-  status?: string;
-  status_changed_at?: string;
-}
+
 
 export interface StreamResponseData {
   stream_url: string;

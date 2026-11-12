@@ -118,7 +118,7 @@ const COORDINATES: Record<string, { lat: number; lng: number; label: string }> =
   cctv17_jembatan_ngasinan_barat: { lat: -8.0645, lng: 111.7065, label: 'Jembatan Ngasinan (Barat), Sungai Ngasinan' },
   cctv18_sungai_temon: { lat: -8.0250, lng: 111.7080, label: 'Sungai Temon, Desa Ngares' },
   cctv19_ngadirenggo: { lat: -8.0950, lng: 111.7330, label: 'Jembatan Ngadirenggo, Kec. Pogalan' },
-  cctv20_dermosari_tugu: { lat: -8.0270, lng: 111.6450, label: 'Jalan Ponorogo Tugu, Dermosari' },
+  cctv20_dermosari_tugu: { lat: -8.0270, lng: 111.6450, label: 'Jalan Tugu, Dermosari' },
   cctv21_panggul_pertigaan_jogja: { lat: -8.2300, lng: 111.4450, label: 'Pertigaan Panggul' },
 };
 

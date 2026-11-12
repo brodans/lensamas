@@ -32,10 +32,7 @@ function envValue(name: string, fallback: string): string {
   return process.env[name]?.trim() || fallback;
 }
 
-export const API_BASE_URL = envValue('API_BASE_URL', 'https://nawasara.ponorogo.go.id');
-export const API_ORIGIN = envValue('API_ORIGIN', 'https://gasta.ponorogo.go.id');
 export const APP_ORIGIN = envValue('APP_ORIGIN', '');
-export const API_TOKEN = process.env.API_TOKEN?.trim();
 
 export const MADIUN_PRIMARY_API_URL = envValue(
   'MADIUN_PRIMARY_API_URL',
@@ -230,6 +227,15 @@ export const SITUBONDO_ZM_PASSWORD = envValue('SITUBONDO_ZM_PASSWORD', '');
 export const SITUBONDO_ZM_SCALE = envValue('SITUBONDO_ZM_SCALE', '50');
 export const SITUBONDO_ZM_MAX_FPS = envValue('SITUBONDO_ZM_MAX_FPS', '5');
 export const PASURUAN_BASE_URL = envValue('PASURUAN_BASE_URL', 'https://dishub.pasuruankab.go.id');
+
+export const BANDUNG_ATCS_API_URL = envValue(
+  'BANDUNG_ATCS_API_URL',
+  'https://pelindung.bandung.go.id:8443/api/cek'
+);
+export const BANDUNG_ATCS_STREAM_BASE = envValue(
+  'BANDUNG_ATCS_STREAM_BASE',
+  'https://pelindung.bandung.go.id:3443'
+);
 export const PASURUAN_GEOJSON_PATH = envValue('PASURUAN_GEOJSON_PATH', '/maps/ajax/geojson');
 export const PASURUAN_GEOJSON_MARKER = envValue('PASURUAN_GEOJSON_MARKER', '2_2');
 export const PASURUAN_STREAM_BASE = envValue(

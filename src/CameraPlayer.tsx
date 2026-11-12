@@ -90,6 +90,10 @@ const CameraPlayer: React.FC<CameraPlayerProps> = ({
   const [mjpegReloadKey, setMjpegReloadKey] = useState<number>(0);
   const mjpegRef = useRef<MjpegPlayerHandle | null>(null);
   const isMjpeg = camera.protocol === 'mjpeg';
+  const isIframe = camera.protocol === 'iframe';
+  const isSnapshot = camera.protocol === 'snapshot';
+  const [snapshotReloadKey, setSnapshotReloadKey] = useState<number>(0);
+  const [iframeReloadKey, setIframeReloadKey] = useState<number>(0);
   const streamLabel =
     camera.source === 'madiun' ? 'CCTV Madiun' :
     camera.source === 'magetan' ? 'CCTV Magetan' :
@@ -116,6 +120,15 @@ const CameraPlayer: React.FC<CameraPlayerProps> = ({
     document.addEventListener('fullscreenchange', syncFullscreenState);
     return () => document.removeEventListener('fullscreenchange', syncFullscreenState);
   }, []);
+
+  // Snapshot diperbarui berkala agar tampilan tetap live.
+  useEffect(() => {
+    if (!isSnapshot) return;
+    const timer = window.setInterval(() => {
+      setSnapshotReloadKey((key) => key + 1);
+    }, 5000);
+    return () => window.clearInterval(timer);
+  }, [isSnapshot]);
 
   const toggleFullscreen = useCallback(async (): Promise<void> => {
     const playerBody = playerBodyRef.current;
@@ -163,6 +176,12 @@ const CameraPlayer: React.FC<CameraPlayerProps> = ({
           ? 'Stream Bondowoso belum dikonfigurasi di server Vercel.'
           : 'Stream MJPEG Situbondo belum dikonfigurasi di server Vercel.'
       );
+      return;
+    }
+
+    if (isIframe || isSnapshot) {
+      setPhase('live');
+      setError('');
       return;
     }
 
@@ -276,7 +295,7 @@ const CameraPlayer: React.FC<CameraPlayerProps> = ({
         containerRef.current.replaceChildren();
       }
     };
-  }, [camera.source, camera.streamConfigured, streamUrl, isLoadingUrl, streamError, stopRecording, isJsmpeg, isHls, isFlv, isMjpeg]);
+  }, [camera.source, camera.streamConfigured, streamUrl, isLoadingUrl, streamError, stopRecording, isJsmpeg, isHls, isFlv, isMjpeg, isIframe, isSnapshot]);
 
   // Auto-refresh signed URL sebelum kedaluwarsa (~5 menit)
   useEffect(() => {
@@ -432,6 +451,14 @@ const CameraPlayer: React.FC<CameraPlayerProps> = ({
       setMjpegReloadKey((key) => key + 1);
       return;
     }
+    if (isIframe) {
+      setIframeReloadKey((key) => key + 1);
+      return;
+    }
+    if (isSnapshot) {
+      setSnapshotReloadKey((key) => key + 1);
+      return;
+    }
     setIsReloading(true);
     try {
       await onRefreshUrl(camera.slug);
@@ -445,7 +472,9 @@ const CameraPlayer: React.FC<CameraPlayerProps> = ({
     else if (isHls) setMode('HLS');
     else if (isFlv) setMode('FLV');
     else if (isMjpeg) setMode('MJPEG');
-  }, [isJsmpeg, isHls, isFlv, isMjpeg]);
+    else if (isIframe) setMode('IFRAME');
+    else if (isSnapshot) setMode('SNAPSHOT');
+  }, [isJsmpeg, isHls, isFlv, isMjpeg, isIframe, isSnapshot]);
 
   return (
     <div className="player">
@@ -611,6 +640,27 @@ const CameraPlayer: React.FC<CameraPlayerProps> = ({
             onError={(message) => {
               setError(message);
             }}
+          />
+        </div>
+      ) : isIframe ? (
+        <div className="player-body player-body-iframe" ref={playerBodyRef}>
+          <iframe
+            key={iframeReloadKey}
+            src={camera.streamUrl || streamUrl || ''}
+            title={camera.name}
+            className="h-full w-full border-0 bg-black"
+            allow="autoplay; fullscreen; picture-in-picture"
+            allowFullScreen
+            loading="lazy"
+          />
+        </div>
+      ) : isSnapshot ? (
+        <div className="player-body player-body-snapshot" ref={playerBodyRef}>
+          <img
+            key={snapshotReloadKey}
+            src={`${camera.thumbUrl || streamUrl || ''}${(camera.thumbUrl || streamUrl || '').includes('?') ? '&' : '?'}r=${snapshotReloadKey}`}
+            alt={camera.name}
+            className="h-full w-full object-contain bg-black"
           />
         </div>
       ) : (
